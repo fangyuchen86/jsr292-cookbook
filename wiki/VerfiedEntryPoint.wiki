@@ -15,11 +15,10 @@ of the call. If the inlining cache fails because the receiver class is not
 equals to the class, the current implementation fallback to a Java vtable call.
 One can also installs the inlining cache of the receiver's class.
 
+=== Code ===
 
-= Tests =
+[http://code.google.com/p/jsr292-cookbook/source/browse/trunk/verified-entrypoint/src/jsr292/cookbook/vep/RT.java jsr292/cookbook/vep/RT.java]
 
-= Code =
-
-= References =
+=== References ===
 
 [http://wikis.sun.com/display/HotSpotInternals/VirtualCalls Hotspot Wiki - Virtual Calls]
