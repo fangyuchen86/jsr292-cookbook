@@ -11,6 +11,7 @@
 	<classpathentry kind="src" output="verified-entrypoint/classes" path="verified-entrypoint/src"/>
 	<classpathentry kind="src" output="multi-dispatch/classes" path="multi-dispatch/src"/>
 	<classpathentry kind="src" output="bimorphic-cache/classes" path="bimorphic-cache/src"/>
+	<classpathentry kind="src" output="inlining-switch/classes" path="inlining-switch/src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="lib" path="lib/asm-debug-all-4.0_RC1.jar" sourcepath="lib/src.zip"/>
 	<classpathentry kind="output" path="classes"/>

@@ -10,8 +10,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import jsr292.cookbook.metaclass.RT;
-
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodHandle;
 import org.objectweb.asm.MethodVisitor;

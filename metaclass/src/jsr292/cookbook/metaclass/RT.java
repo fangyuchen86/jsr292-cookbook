@@ -45,7 +45,7 @@ public class RT {
           throw new BootstrapMethodError(e);
         }
       }
-      mh = mh.asType(type());
+      mh = mh.asType(type);
       return switchPoint.guardWithTest(mh, fallback);
     }
   }
