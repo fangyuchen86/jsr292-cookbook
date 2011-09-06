@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="metaclass" default="all">
+	<property file="../ant.properties" />
+	<property name="lib" location="../lib" />
+	<property name="asm.lib" value="${lib}/${asm.lib.name}" /> 
+	
+    <target name="compile">
+    	<javac srcdir="src"
+               destdir="classes"
+               classpath="${asm.lib}"
+               debug="on"
+    	/>
+    	<javac srcdir="."
+    		   includesfile="Main.java"
+    	       debug="on"
+    	/>
+    </target>
+	
+	<target name="rewrite" depends="compile">
+	      <java classpath="classes:${asm.lib}"
+		        fork="true"
+	      	    classname="jsr292.cookbook.metaclass.Rewriter">
+	      	<arg value="Main.class"/>
+	      </java>
+	</target>
+	
+	<target name="run" depends="rewrite">
+		  <echo message="run Main"/>
+		  <java classpath=".:classes"
+			    fork="true"
+		      	classname="Main"
+		  />	        
+	</target>
+	
+	<target name="clean">
+		<delete file="./*.class"/>
+		<delete dir="classes" />
+	    <mkdir dir="classes" />
+	</target>
+	
+	<target name="all" depends="rewrite" />
+</project>

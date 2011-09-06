@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="lazy-init" default="all">
+	<property file="../ant.properties" />
+	<property name="lib" location="../lib" />
+	<property name="asm.lib" value="${lib}/${asm.lib.name}" /> 
+	
+    <target name="compile">
+    	<javac srcdir="src"
+               destdir="classes"
+               classpath="${asm.lib}"
+               debug="on"
+    	/>
+    </target>
+	
+	<target name="gen" depends="compile">
+	      <java classpath="classes:${asm.lib}"
+		        fork="true"
+	      	    dir=".."
+	      	    classname="jsr292.cookbook.lazyinit.Gen"
+	      />	        
+	</target>
+	
+	<target name="run" depends="gen">
+		  <echo message="run Main"/>
+		  <java classpath=".:classes"
+			    fork="true"
+		      	classname="Main"
+		  />	        
+	</target>
+	
+	<target name="clean">
+		<delete dir="classes" />
+	    <mkdir dir="classes" />
+	</target>
+	
+	<target name="all" depends="gen" />
+</project>

@@ -1,4 +1,4 @@
-package jsr292.cookbook.icache;
+package jsr292.cookbook.iswitch;
 
 import static org.objectweb.asm.Opcodes.*;
 
