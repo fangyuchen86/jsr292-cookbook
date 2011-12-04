@@ -28,7 +28,7 @@ class SelectorMetadata {
     
     // try to simplify using static information
     int constBits = 0;
-    LinkedList<PositionInfo> posInfos = new LinkedList<PositionInfo>(positionInfos);
+    LinkedList<PositionInfo> posInfos = new LinkedList<>(positionInfos);
     for(Iterator<PositionInfo> it = posInfos.iterator(); it.hasNext();) {
       PositionInfo positionInfo = it.next();
       int projectionIndex = positionInfo.projectionIndex;
@@ -128,10 +128,12 @@ class SelectorMetadata {
     }
     
     int length = mhList.get(0).type().parameterCount();
-    HashSet<Class<?>>[] sets = (HashSet<Class<?>>[])new HashSet<?>[length]; 
-    HashSet<Class<?>>[] boxUnboxSets = (HashSet<Class<?>>[])new HashSet<?>[length]; 
+    @SuppressWarnings("unchecked")
+        HashSet<Class<?>>[] sets = (HashSet<Class<?>>[])new HashSet<?>[length]; 
+    @SuppressWarnings("unchecked")
+        HashSet<Class<?>>[] boxUnboxSets = (HashSet<Class<?>>[])new HashSet<?>[length]; 
     for(int i=0; i<length; i++) {
-      sets[i] = new HashSet<Class<?>>();
+      sets[i] = new HashSet<>();
     }
     
     // find types by position
@@ -151,7 +153,7 @@ class SelectorMetadata {
         if (convSet != null) {
           HashSet<Class<?>> boxUnboxSet = boxUnboxSets[j];
           if (boxUnboxSet == null) { // lazy allocation
-            boxUnboxSet = boxUnboxSets[j] = new HashSet<Class<?>>();
+            boxUnboxSet = boxUnboxSets[j] = new HashSet<>();
           }
           boxUnboxSet.addAll(convSet);
         }
@@ -159,7 +161,7 @@ class SelectorMetadata {
     }
     
     // determine projection
-    ArrayList<PositionInfo> positionInfos = new ArrayList<PositionInfo>();
+    ArrayList<PositionInfo> positionInfos = new ArrayList<>();
     for(int i=0; i<sets.length; i++) {
       HashSet<Class<?>> set = sets[i];
       if (set.size() == 1) { // only one type
@@ -249,18 +251,17 @@ class SelectorMetadata {
         { double.class, Double.class, float.class, Float.class, long.class, Long.class, int.class, Integer.class, char.class, Character.class, short.class, Short.class, byte.class, Byte.class},
     };
     
-    HashMap<Class<?>, HashSet<Class<?>>> map =
-      new HashMap<Class<?>, HashSet<Class<?>>>();
+    HashMap<Class<?>, HashSet<Class<?>>> map = new HashMap<>();
     for(Class<?>[] classes: array) {
-      HashSet<Class<?>> conversionSet = new HashSet<Class<?>>();
+      HashSet<Class<?>> conversionSet = new HashSet<>();
       Collections.addAll(conversionSet, classes);
       map.put(classes[0], conversionSet);
       map.put(classes[1], conversionSet);
     }
     
-    HashSet<Class<?>> objectConvSet = new HashSet<Class<?>>();
+    HashSet<Class<?>> objectConvSet = new HashSet<>();
     Collections.addAll(objectConvSet, double.class, Double.class, float.class, Float.class, long.class, Long.class, int.class, Integer.class, char.class, Character.class, short.class, Short.class, byte.class, Byte.class);
-    map.put(Number.class, new HashSet<Class<?>>(objectConvSet));
+    map.put(Number.class, new HashSet<>(objectConvSet));
     Collections.addAll(objectConvSet, boolean.class, Boolean.class);
     map.put(Object.class, objectConvSet);
     

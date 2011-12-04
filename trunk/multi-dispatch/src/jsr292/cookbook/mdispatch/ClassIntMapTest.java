@@ -10,7 +10,7 @@ import java.util.ArrayList;
 public class ClassIntMapTest {
   public static void main(String[] args) throws IllegalAccessException {
     Lookup lookup = MethodHandles.publicLookup();
-    ArrayList<MethodHandle> mhs = new ArrayList<MethodHandle>();
+    ArrayList<MethodHandle> mhs = new ArrayList<>();
     for(Method method: PrintStream.class.getMethods()) {
       if (!method.getName().equals("println")) {
         continue;

@@ -37,31 +37,31 @@ public class Rewriter {
   
   public static void main(String[] args) throws IOException {
     Path path = Paths.get(args[0]);
-    InputStream input = Files.newInputStream(path);
-    ClassReader reader = new ClassReader(input);
-    ClassWriter writer = new ClassWriter(reader, 0);
-    reader.accept(new ClassAdapter(writer) {
-      @Override
-      public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-        MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
-        return new MethodAdapter(mv) {
-          @Override
-          public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-            if (opcode == INVOKESPECIAL) {
-              super.visitMethodInsn(opcode, owner, name, desc);
-              return;
+    try(InputStream input = Files.newInputStream(path)) {
+      ClassReader reader = new ClassReader(input);
+      ClassWriter writer = new ClassWriter(reader, 0);
+      reader.accept(new ClassAdapter(writer) {
+        @Override
+        public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+          MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
+          return new MethodAdapter(mv) {
+            @Override
+            public void visitMethodInsn(int opcode, String owner, String name, String desc) {
+              if (opcode == INVOKESPECIAL) {
+                super.visitMethodInsn(opcode, owner, name, desc);
+                return;
+              }
+              if (opcode == INVOKESTATIC) {
+                super.visitInvokeDynamicInsn(name, desc, BSM_STATIC, Type.getObjectType(owner));
+                return;
+              }
+              // INVOKEINTERFACE & INVOKEVIRTUAL
+              super.visitInvokeDynamicInsn(name, "(L" + owner +';' + desc.substring(1), BSM_VIRTUAL);
             }
-            if (opcode == INVOKESTATIC) {
-              super.visitInvokeDynamicInsn(name, desc, BSM_STATIC, Type.getObjectType(owner));
-              return;
-            }
-            // INVOKEINTERFACE & INVOKEVIRTUAL
-            super.visitInvokeDynamicInsn(name, "(L" + owner +';' + desc.substring(1), BSM_VIRTUAL);
-          }
-        };
-      }
-    } , 0);
-    input.close();
-    Files.write(path, writer.toByteArray());
+          };
+        }
+      } , 0);
+      Files.write(path, writer.toByteArray());
+    }
   }
 }
