@@ -3,7 +3,6 @@ package jsr292.cookbook.mdispatch;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.util.ArrayDeque;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -40,8 +39,8 @@ class Lattice {
   }
   
   private static Set<Node> breadthFirstMark(Node root, int capacity) {
-    LinkedHashMap<Node, Object> result = new LinkedHashMap<Node, Object>();
-    ArrayDeque<Node> queue = new ArrayDeque<Node>(capacity);
+    LinkedHashMap<Node, Object> result = new LinkedHashMap<>();
+    ArrayDeque<Node> queue = new ArrayDeque<>(capacity);
     queue.offer(root);
     while(!queue.isEmpty()) {
       Node node = queue.remove();
@@ -62,8 +61,7 @@ class Lattice {
   static class Node {
     boolean mark;
     MethodHandle mh;
-    final LinkedList<Node> children =
-      new LinkedList<Node>();
+    final LinkedList<Node> children = new LinkedList<>();
     
     Node(MethodHandle mh) {
       this.mh = mh;

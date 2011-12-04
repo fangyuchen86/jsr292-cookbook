@@ -19,7 +19,7 @@ public class RT {
       @Override
       protected HashMap<Selector, SelectorMetadata> computeValue(Class<?> type) {
         Lookup lookup = MethodHandles.publicLookup();
-        HashMap<Selector, ArrayList<MethodHandle>> map = new HashMap<Selector, ArrayList<MethodHandle>>();
+        HashMap<Selector, ArrayList<MethodHandle>> map = new HashMap<>();
         for(Method method: type.getMethods()) {
           if (method.isBridge()) {
             continue;  // skip bridge
@@ -29,7 +29,7 @@ public class RT {
               ((Modifier.isStatic(method.getModifiers()))?0: 1));
           ArrayList<MethodHandle> list = map.get(selector);
           if (list == null) {
-            list = new ArrayList<MethodHandle>();
+            list = new ArrayList<>();
             map.put(selector, list);
           }
           try {
@@ -40,8 +40,7 @@ public class RT {
           }
         }
         
-        HashMap<Selector, SelectorMetadata> selectorMap =
-          new HashMap<RT.Selector, SelectorMetadata>();
+        HashMap<Selector, SelectorMetadata> selectorMap = new HashMap<>();
         for(Entry<Selector, ArrayList<MethodHandle>> entry: map.entrySet()) {
           ArrayList<MethodHandle> mhs = entry.getValue();
           if (mhs.size() > 1) {  // no multi-dispatch if only one method
