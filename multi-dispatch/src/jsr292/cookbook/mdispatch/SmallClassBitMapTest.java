@@ -7,7 +7,7 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
-public class ClassIntMapTest {
+public class SmallClassBitMapTest {
   public static void main(String[] args) throws IllegalAccessException {
     Lookup lookup = MethodHandles.publicLookup();
     ArrayList<MethodHandle> mhs = new ArrayList<>();
@@ -23,7 +23,7 @@ public class ClassIntMapTest {
       mhs.add(mh);
     }
     
-    ClassIntMap map = new ClassIntMap(mhs.size());
+    SmallClassBitMap map = new SmallClassBitMap(mhs.size());
     for(int i=0; i<mhs.size(); i++) {
       map.putNoResize(mhs.get(i).type().parameterType(1), 1<<i);
     }

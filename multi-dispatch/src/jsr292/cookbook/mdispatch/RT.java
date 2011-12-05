@@ -25,8 +25,9 @@ public class RT {
             continue;  // skip bridge
           }
           
+          boolean isStatic = Modifier.isStatic(method.getModifiers());
           Selector selector = new Selector(method.getName(), method.getParameterTypes().length +
-              ((Modifier.isStatic(method.getModifiers()))?0: 1));
+              (isStatic?0: 1));
           ArrayList<MethodHandle> list = map.get(selector);
           if (list == null) {
             list = new ArrayList<>();
@@ -34,7 +35,12 @@ public class RT {
           }
           try {
             method.setAccessible(true);
-            list.add(lookup.unreflect(method));
+            MethodHandle mh = lookup.unreflect(method);
+            if (!isStatic) {
+              // adapt the receiver type to be the one of current class
+              mh = mh.asType(mh.type().changeParameterType(0, type));
+            }
+            list.add(mh);
           } catch (IllegalAccessException e) {
             throw (LinkageError)new LinkageError().initCause(e);
           }
@@ -44,8 +50,19 @@ public class RT {
         for(Entry<Selector, ArrayList<MethodHandle>> entry: map.entrySet()) {
           ArrayList<MethodHandle> mhs = entry.getValue();
           if (mhs.size() > 1) {  // no multi-dispatch if only one method
-              //System.out.println("selector "+entry.getKey());
-              selectorMap.put(entry.getKey(), SelectorMetadata.create(mhs));
+            SelectorMetadata selectorMetadata;
+            try {
+              if (mhs.size() <= 32) {
+                selectorMetadata = SmallSelectorMetadata.create(mhs);
+              } else {
+                throw new UnsupportedOperationException("NYI");
+                //selectorMetadata = JumboSelectorMetadata.create(mhs);
+              }
+            } catch(UnsupportedOperationException e) {
+              System.err.println("skip "+type.getName()+'.'+entry.getKey());
+              continue;
+            }
+            selectorMap.put(entry.getKey(), selectorMetadata);
           }
         }
         
@@ -86,32 +103,29 @@ public class RT {
     }
   }
     
-  static MethodHandle getMultiDispatchTarget(Lookup lookup, String name, MethodType type, Class<?> staticType) throws NoSuchMethodException, IllegalAccessException {
+  static MethodHandle getMultiDispatchTarget(Lookup lookup, String name, MethodType type, boolean isStatic, Class<?> dispatchType) throws NoSuchMethodException, IllegalAccessException {
     try {
       Selector selector = new Selector(name, type.parameterCount());
-      SelectorMetadata metadata = SELECTOR_MAP_VALUE.get(staticType).get(selector);
+      SelectorMetadata metadata = SELECTOR_MAP_VALUE.get(dispatchType).get(selector);
       if (metadata == null) {  // only one method, no multi-dispatch
-        //System.out.println("static linking "+staticType.getName()+'.'+name+type+" in "+lookup.lookupClass().getName());
-        return lookup.findStatic(staticType, name, type);
+        //System.out.println("one virtual linking "+dispatchType.getName()+'.'+name+type+" in "+lookup.lookupClass().getName());
+        if (isStatic) {
+          return lookup.findStatic(dispatchType, name, type);
+        }
+        return lookup.findVirtual(dispatchType, name, type.dropParameterTypes(0, 1));
       }
 
       return metadata.createMethodHandle(type);
       
     } catch(RuntimeException e) {
       throw new BootstrapMethodError(
-          "error while linking "+staticType.getName()+'.'+name+type+" in "+lookup.lookupClass().getName(),
+          "error while linking "+dispatchType.getName()+'.'+name+type+" in "+lookup.lookupClass().getName(),
           e);
     }
   }
   
   public static CallSite invokestatic(Lookup lookup, String name, MethodType type, Class<?> staticType) throws NoSuchMethodException, IllegalAccessException {
-    try {
-      return new ConstantCallSite(getMultiDispatchTarget(lookup, name, type, staticType));
-    } catch(BootstrapMethodError e) {
-      e.printStackTrace();
-      // revert to static dispatch
-      return new ConstantCallSite(lookup.findStatic(staticType, name, type));
-    }
+    return new ConstantCallSite(getMultiDispatchTarget(lookup, name, type, true, staticType));
   }
   
   static class BimorphicCacheCallSite extends MutableCallSite {
@@ -130,40 +144,15 @@ public class RT {
     }
     
     public synchronized Object fallback(Object[] args) throws Throwable {
-      final MethodType type = type();
       if (class1 != null && class2 != null) {
         // bimorphic cache defeated, use a dispatch table instead
-        DispatchMap dispatchMap = new DispatchMap() {
-          @Override
-          protected MethodHandle findMethodHandle(Class<?> receiverClass) throws Throwable {
-            try {
-              return getMultiDispatchTarget(lookup, name, type, receiverClass);
-            } catch(BootstrapMethodError e) {
-              // revert to a virtual dispatch
-              return lookup.findVirtual(receiverClass, name, type.dropParameterTypes(0, 1));
-            }
-          }
-        };
-        dispatchMap.populate(class1, mh1, class1, mh2);   // pre-populated with known couples
-        class1 = class2 = null;
-        mh1 = mh2 = null;
-        
-        MethodHandle lookupMH = MethodHandles.filterReturnValue(GET_CLASS, LOOKUP_MH.bindTo(dispatchMap));
-        lookupMH = lookupMH.asType(MethodType.methodType(MethodHandle.class, type.parameterType(0)));
-        MethodHandle target = MethodHandles.foldArguments(MethodHandles.exactInvoker(type), lookupMH);
-        setTarget(target);
-        return target.invokeWithArguments(args);
+        return fallbackToDispatchTable(args);
       }
       
+      MethodType type = type();
       Object receiver = args[0];
       Class<?> receiverClass = receiver.getClass();
-      MethodHandle target;
-      try {
-        target = getMultiDispatchTarget(lookup, name, type, receiverClass);
-      } catch(BootstrapMethodError e) {
-        // revert to a virtual dispatch
-        target = lookup.findVirtual(receiverClass, name, type.dropParameterTypes(0, 1));
-      }
+      MethodHandle target = getMultiDispatchTarget(lookup, name, type, false, receiverClass);
       
       MethodHandle test = CHECK_CLASS.bindTo(receiverClass);
       test = test.asType(test.type().changeParameterType(0, type.parameterType(0)));
@@ -178,6 +167,27 @@ public class RT {
       }
       
       setTarget(guard);
+      return target.invokeWithArguments(args);
+    }
+    
+    private Object fallbackToDispatchTable(Object[] args) throws Throwable {
+      assert Thread.holdsLock(this);
+      
+      final MethodType type = type();
+      DispatchMap dispatchMap = new DispatchMap() {
+        @Override
+        protected MethodHandle findMethodHandle(Class<?> receiverClass) throws Throwable {
+          return getMultiDispatchTarget(lookup, name, type, false, receiverClass);
+        }
+      };
+      dispatchMap.populate(class1, mh1, class1, mh2);   // pre-populated with known couples
+      class1 = class2 = null;  
+      mh1 = mh2 = null;  // free for GC
+      
+      MethodHandle lookupMH = MethodHandles.filterReturnValue(GET_CLASS, LOOKUP_MH.bindTo(dispatchMap));
+      lookupMH = lookupMH.asType(MethodType.methodType(MethodHandle.class, type.parameterType(0)));
+      MethodHandle target = MethodHandles.foldArguments(MethodHandles.exactInvoker(type), lookupMH);
+      setTarget(target);
       return target.invokeWithArguments(args);
     }
   }

@@ -3,37 +3,37 @@ package jsr292.cookbook.mdispatch;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.util.ArrayDeque;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Set;
 
 class Lattice {
-  private final List<PositionInfo> positionInfos;
+  private final int[] projectionIndexes;
   private final Node root = new Node(null); 
   private int size;
   
-  public Lattice(List<PositionInfo> positionInfos) {
-    if (positionInfos.isEmpty()) {
+  public Lattice(int[] projectionIndexes) {
+    if (projectionIndexes.length == 0) {
       throw new IllegalArgumentException("method need at least one parameter");
     }
       
-    this.positionInfos = positionInfos;
+    this.projectionIndexes = projectionIndexes;
   }
   
   public void add(MethodHandle mh) {
     Node node = new Node(mh);
-    root.add(positionInfos, node);
+    root.add(projectionIndexes, node);
     size++;
   }
   
   public MethodHandle[] topologicalSort() {
     MethodHandle[] array = new MethodHandle[size];
-    int i = 0;
+    int i = size;
     Set<Node> breadthFirstMark = breadthFirstMark(root, size);
     for(Node node: breadthFirstMark) {
-      array[i++] = node.mh;
+      array[--i] = node.mh;
     }
     return array;
   }
@@ -67,14 +67,14 @@ class Lattice {
       this.mh = mh;
     }
     
-    void add(List<PositionInfo> positionInfos, Node newNode) {
+    void add(int[] projectionIndexes, Node newNode) {
       boolean inserted = false;
-      for(ListIterator<Node> it = children.listIterator(); it.hasNext();) {
+      for(Iterator<Node> it = children.iterator(); it.hasNext();) {
         Node node = it.next();
-        switch(diff(positionInfos, node.mh, newNode.mh)) {
+        switch(diff(projectionIndexes, node.mh, newNode.mh)) {
         case LT:
           inserted = true;
-          node.add(positionInfos, newNode);
+          node.add(projectionIndexes, newNode);
           continue;
         case GT:
           it.remove();
@@ -96,13 +96,12 @@ class Lattice {
     private final static int EQ = 3;  // equal
     private final static int NC = 4;  // no conversion
     
-    private static int diff(List<PositionInfo> positionInfos, MethodHandle mh1, MethodHandle mh2) {
+    private static int diff(int[] projectionIndexes, MethodHandle mh1, MethodHandle mh2) {
       MethodType type1 = mh1.type();
       MethodType type2 = mh2.type();
       
       int bias = EQ;
-      for(int i=0; i<positionInfos.size(); i++) {
-        int index = positionInfos.get(i).projectionIndex;
+      for(int index: projectionIndexes) {
         switch(diff(type1.parameterType(index), type2.parameterType(index))) {
         case LT:
           if (bias == GT) {
@@ -181,8 +180,8 @@ class Lattice {
       //        Z   B   S   C   I   J   F   D   
       /* Z */ { EQ, NC, NC, NC, NC, NC, NC, NC },
       /* B */ { NC, EQ, LT, LT, LT, LT, LT, LT },
-      /* S */ { NC, GT, EQ, LT, LT, LT, LT, LT },
-      /* C */ { NC, GT, GT, EQ, LT, LT, LT, LT },
+      /* S */ { NC, GT, EQ, NC, LT, LT, LT, LT },
+      /* C */ { NC, GT, NC, EQ, LT, LT, LT, LT },
       /* I */ { NC, GT, GT, GT, EQ, LT, LT, LT },
       /* J */ { NC, GT, GT, GT, GT, EQ, LT, LT },
       /* F */ { NC, GT, GT, GT, GT, GT, EQ, LT },
