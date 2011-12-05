@@ -24,7 +24,7 @@ class LatticeTest {
       mhs.add(mh);
     }
     
-    Lattice lattice = new Lattice(Arrays.asList(new PositionInfo(1, false, null)));  // 0 -> PrintStream, 1 -> argument
+    Lattice lattice = new Lattice(new int[] {1});  // 0 -> PrintStream, 1 -> argument
     for(MethodHandle mh: mhs) {
       lattice.add(mh);
     }
