@@ -1,33 +1,34 @@
 
-public class Main {
-  public static void m(String s, int v) {
+public class Main2 {
+  public void m(String s, int v) {
     assert s.length() == v;
   }
   
-  public static void m(Integer i, int v) {
+  public void m(Integer i, int v) {
     assert i.toString().length() == v;
   }
   
-  public static void m(Character c, int v) {
+  public void m(Character c, int v) {
     assert c == 'e';
   }
   
-  private static void m(Object o, int v) {
+  public void m(Object o, int v) {
     // just here to please the compiler
     throw new AssertionError();
   }
   
+  private final static Main2 main2 = new Main2();
   
   private static void test1() {
-    m("foo", 3);     // monomorphic dispatch
+    main2.m("foo", 3);     // monomorphic dispatch
   }
   
   private static void test2(Object o) {
-    m(o, 2);         // multi dispatch
+    main2.m(o, 2);         // multi dispatch
   }
   
   private static void test3(Object o) {
-    m(o, 3);         // multi dispatch with conversions
+    main2.m(o, 3);         // multi dispatch with conversions
   }
   
   public static void main(String[] args) {
