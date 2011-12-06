@@ -19,15 +19,15 @@ public class Main2 {
   
   private final static Main2 main2 = new Main2();
   
-  private static void test1() {
+  public static void test1() {
     main2.m("foo", 3);     // monomorphic dispatch
   }
   
-  private static void test2(Object o) {
+  public static void test2(Object o) {
     main2.m(o, 2);         // multi dispatch
   }
   
-  private static void test3(Object o) {
+  public static void test3(Object o) {
     main2.m(o, 3);         // multi dispatch with conversions
   }
   

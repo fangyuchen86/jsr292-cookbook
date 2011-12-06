@@ -95,7 +95,6 @@ class SmallSelectorMetadata extends SelectorMetadata {
     
     private MethodHandle getTargetMethodHandle() {
       MethodType type = type();
-      
       if (actualPosInfos.size() == 1) {
         //System.out.println("one actual pos, transfer to a class map");
         
@@ -127,10 +126,10 @@ class SmallSelectorMetadata extends SelectorMetadata {
       }
       
       // construct a tree of method handle, prepend static const bits set if necessary
-      MethodHandle bitReducer = SmallBitReducer.getReducer(actualPosInfos.size() + ((constBits!=0)? 1: 0));
-      bitReducer = bitReducer.bindTo(array);
-      if (constBits != 0) {
-        bitReducer = bitReducer.bindTo(constBits);
+      MethodHandle bitReducer = SmallBitReducer.getReducer(actualPosInfos.size() + ((constBits!=0xFFFFFFFF)? 1: 0));
+      bitReducer = MethodHandles.insertArguments(bitReducer, 0, new Object[]{array});
+      if (constBits != 0xFFFFFFFF) {
+        bitReducer = MethodHandles.insertArguments(bitReducer, 0, constBits);
       }
       
       boolean mayBoxUnbox = false;
@@ -153,8 +152,7 @@ class SmallSelectorMetadata extends SelectorMetadata {
       }
       getMH = getMH.asType(type.changeReturnType(MethodHandle.class));
       return MethodHandles.foldArguments(
-          //FIXME invoker() in jdk7b144 returns a wrong method type, so add asType as a workaround
-          (mayBoxUnbox)? MethodHandles.invoker(type).asType(type.insertParameterTypes(0, MethodHandle.class)): MethodHandles.exactInvoker(type),
+          (mayBoxUnbox)? MethodHandles.invoker(type): MethodHandles.exactInvoker(type),
           getMH);
     }
   }
