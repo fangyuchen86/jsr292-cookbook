@@ -12,21 +12,21 @@ public class Main {
     assert c == 'e';
   }
   
-  private static void m(Object o, int v) {
+  public static void m(Object o, int v) {
     // just here to please the compiler
     throw new AssertionError();
   }
   
   
-  private static void test1() {
+  public static void test1() {
     m("foo", 3);     // monomorphic dispatch
   }
   
-  private static void test2(Object o) {
+  public static void test2(Object o) {
     m(o, 2);         // multi dispatch
   }
   
-  private static void test3(Object o) {
+  public static void test3(Object o) {
     m(o, 3);         // multi dispatch with conversions
   }
   

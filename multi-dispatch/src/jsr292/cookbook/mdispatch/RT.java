@@ -14,6 +14,10 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 public class RT {
+  /*
+   * The values of the returned hashmap are or an array of method handles
+   * or a metadata selector. 
+   */
   private static final ClassValue<HashMap<Selector,Object>> SELECTOR_MAP_VALUE =
     new ClassValue<HashMap<Selector,Object>>() {
       @Override
