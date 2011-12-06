@@ -7,7 +7,6 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.MutableCallSite;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,7 +41,6 @@ class SmallSelectorMetadata extends SelectorMetadata {
   }
   
   public class MultiDispatchCallSite extends MutableCallSite {
-    private final boolean isStatic; //FIXME
     private final int constBits;
     private final ArrayList<PositionInfo> actualPosInfos;
     private final MethodHandle fallback;
@@ -50,9 +48,8 @@ class SmallSelectorMetadata extends SelectorMetadata {
     
     private static final int MAX_COUNTER = 3;
     
-    MultiDispatchCallSite(MethodType type, boolean isStatic, int constBits, ArrayList<PositionInfo> actualPosInfos) {
+    MultiDispatchCallSite(MethodType type, int constBits, ArrayList<PositionInfo> actualPosInfos) {
       super(type);
-      this.isStatic = isStatic;
       this.constBits = constBits;
       this.actualPosInfos = actualPosInfos;
       
@@ -190,8 +187,13 @@ class SmallSelectorMetadata extends SelectorMetadata {
     
     // try to install a cache
     //System.out.println("cache " + type);
-    MultiDispatchCallSite callSite = new MultiDispatchCallSite(type, true/*FIXME*/, constBits, actualPosInfos);
-    return callSite.dynamicInvoker();
+    
+    //FIXME workaround NoClassDefFoundBug in the JITed code of dynamicInvoker()
+    //MultiDispatchCallSite callSite = new MultiDispatchCallSite(type, true/*FIXME*/, constBits, actualPosInfos);
+    //return callSite.dynamicInvoker();
+    
+    MultiDispatchCallSite callSite = new MultiDispatchCallSite(type.erase(), constBits, actualPosInfos);
+    return callSite.dynamicInvoker().asType(type);
   } 
   
   static final MethodHandle OBJECT_GET_CLASS;
@@ -211,10 +213,10 @@ class SmallSelectorMetadata extends SelectorMetadata {
     }
   }
 
-  public static SmallSelectorMetadata create(List<MethodHandle> mhList) {
-    assert mhList.size() <= 32;
+  public static SmallSelectorMetadata create(MethodHandle[] mhs) {
+    assert mhs.length <= 32;
     
-    int length = mhList.get(0).type().parameterCount();
+    int length = mhs[0].type().parameterCount();
     @SuppressWarnings("unchecked")
         HashSet<Class<?>>[] sets = (HashSet<Class<?>>[])new HashSet<?>[length]; 
     @SuppressWarnings("unchecked")
@@ -224,8 +226,7 @@ class SmallSelectorMetadata extends SelectorMetadata {
     }
     
     // find types by position
-    for(int i=0; i<mhList.size(); i++) {
-      MethodHandle mh = mhList.get(i);
+    for(MethodHandle mh: mhs) {
       MethodType type = mh.type();
       
       for(int j=0; j<length; j++) {
@@ -247,7 +248,7 @@ class SmallSelectorMetadata extends SelectorMetadata {
       }
     }
     
-    // determine projection
+    // determine projections
     ArrayList<PositionInfo> positionInfos = new ArrayList<>();
     for(int i=0; i<sets.length; i++) {
       HashSet<Class<?>> set = sets[i];
@@ -266,10 +267,10 @@ class SmallSelectorMetadata extends SelectorMetadata {
     
     // topologically sort method handles 
     Lattice lattice = new Lattice(toArray(positionInfos));
-    for(MethodHandle mh: mhList) {
+    for(MethodHandle mh: mhs) {
       lattice.add(mh);
     }
-    MethodHandle[] mhs = lattice.topologicalSort();
+    mhs = lattice.topologicalSort();
     
     //System.out.println("topological sort "+java.util.Arrays.toString(mhs));
     

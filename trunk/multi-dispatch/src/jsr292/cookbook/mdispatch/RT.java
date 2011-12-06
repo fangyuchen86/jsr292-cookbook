@@ -14,10 +14,10 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 public class RT {
-  private static final ClassValue<HashMap<Selector,SelectorMetadata>> SELECTOR_MAP_VALUE =
-    new ClassValue<HashMap<Selector,SelectorMetadata>>() {
+  private static final ClassValue<HashMap<Selector,Object>> SELECTOR_MAP_VALUE =
+    new ClassValue<HashMap<Selector,Object>>() {
       @Override
-      protected HashMap<Selector, SelectorMetadata> computeValue(Class<?> type) {
+      protected HashMap<Selector, Object> computeValue(Class<?> type) {
         Lookup lookup = MethodHandles.publicLookup();
         HashMap<Selector, ArrayList<MethodHandle>> map = new HashMap<>();
         for(Method method: type.getMethods()) {
@@ -46,24 +46,11 @@ public class RT {
           }
         }
         
-        HashMap<Selector, SelectorMetadata> selectorMap = new HashMap<>();
+        HashMap<Selector, Object> selectorMap = new HashMap<>();
         for(Entry<Selector, ArrayList<MethodHandle>> entry: map.entrySet()) {
+          // only store the method handles, create the metadata later when needed
           ArrayList<MethodHandle> mhs = entry.getValue();
-          if (mhs.size() > 1) {  // no multi-dispatch if only one method
-            SelectorMetadata selectorMetadata;
-            try {
-              if (mhs.size() <= 32) {
-                selectorMetadata = SmallSelectorMetadata.create(mhs);
-              } else {
-                throw new UnsupportedOperationException("NYI");
-                //selectorMetadata = JumboSelectorMetadata.create(mhs);
-              }
-            } catch(UnsupportedOperationException e) {
-              System.err.println("skip "+type.getName()+'.'+entry.getKey());
-              continue;
-            }
-            selectorMap.put(entry.getKey(), selectorMetadata);
-          }
+          selectorMap.put(entry.getKey(), mhs.toArray(new MethodHandle[mhs.size()]));
         }
         
         return selectorMap;
@@ -103,18 +90,41 @@ public class RT {
     }
   }
     
-  static MethodHandle getMultiDispatchTarget(Lookup lookup, String name, MethodType type, boolean isStatic, Class<?> dispatchType) throws NoSuchMethodException, IllegalAccessException {
+  static MethodHandle getMultiDispatchTarget(Lookup lookup, String name, MethodType type, Class<?> dispatchType) {
     try {
       Selector selector = new Selector(name, type.parameterCount());
-      SelectorMetadata metadata = SELECTOR_MAP_VALUE.get(dispatchType).get(selector);
-      if (metadata == null) {  // only one method, no multi-dispatch
-        //System.out.println("one virtual linking "+dispatchType.getName()+'.'+name+type+" in "+lookup.lookupClass().getName());
-        if (isStatic) {
-          return lookup.findStatic(dispatchType, name, type);
-        }
-        return lookup.findVirtual(dispatchType, name, type.dropParameterTypes(0, 1));
+      HashMap<Selector, Object> selectorMap = SELECTOR_MAP_VALUE.get(dispatchType);
+      Object value = selectorMap.get(selector);
+      if (value == null) {
+        throw new LinkageError("no public method "+selector+" in "+dispatchType.getName());
       }
-
+      
+      SelectorMetadata metadata;
+      if (value instanceof MethodHandle[]) {
+        MethodHandle[] mhs = (MethodHandle[])value;  
+        if (mhs.length == 1) {
+          // only one method, no multi-dispatch
+          //System.out.println("one virtual linking "+dispatchType.getName()+'.'+name+type+" in "+lookup.lookupClass().getName());
+          return mhs[0].asType(type);
+        }
+        
+        try {
+          if (mhs.length <= 32) {
+            metadata = SmallSelectorMetadata.create(mhs);
+          } else {
+            throw new UnsupportedOperationException("NYI");
+            //selectorMetadata = JumboSelectorMetadata.create(mhs);
+          }
+        } catch(UnsupportedOperationException e) {
+          throw new LinkageError("NIY, "+dispatchType+'.'+selector, e);
+        }
+        
+        // entry is already preallocated, so only one variable is changed
+        // there is also a data race but because the code acts as a cache, we don't care
+        selectorMap.put(selector, metadata);
+      } else {
+        metadata = (SelectorMetadata)value;
+      }
       return metadata.createMethodHandle(type);
       
     } catch(RuntimeException e) {
@@ -125,7 +135,7 @@ public class RT {
   }
   
   public static CallSite invokestatic(Lookup lookup, String name, MethodType type, Class<?> staticType) throws NoSuchMethodException, IllegalAccessException {
-    return new ConstantCallSite(getMultiDispatchTarget(lookup, name, type, true, staticType));
+    return new ConstantCallSite(getMultiDispatchTarget(lookup, name, type, staticType));
   }
   
   static class BimorphicCacheCallSite extends MutableCallSite {
@@ -152,7 +162,7 @@ public class RT {
       MethodType type = type();
       Object receiver = args[0];
       Class<?> receiverClass = receiver.getClass();
-      MethodHandle target = getMultiDispatchTarget(lookup, name, type, false, receiverClass);
+      MethodHandle target = getMultiDispatchTarget(lookup, name, type, receiverClass);
       
       MethodHandle test = CHECK_CLASS.bindTo(receiverClass);
       test = test.asType(test.type().changeParameterType(0, type.parameterType(0)));
@@ -177,7 +187,7 @@ public class RT {
       DispatchMap dispatchMap = new DispatchMap() {
         @Override
         protected MethodHandle findMethodHandle(Class<?> receiverClass) throws Throwable {
-          return getMultiDispatchTarget(lookup, name, type, false, receiverClass);
+          return getMultiDispatchTarget(lookup, name, type, receiverClass);
         }
       };
       dispatchMap.populate(class1, mh1, class1, mh2);   // pre-populated with known couples
