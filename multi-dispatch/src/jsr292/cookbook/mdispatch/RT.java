@@ -138,7 +138,7 @@ public class RT {
     }
   }
   
-  public static CallSite invokestatic(Lookup lookup, String name, MethodType type, Class<?> staticType) throws NoSuchMethodException, IllegalAccessException {
+  public static CallSite invokestatic(Lookup lookup, String name, MethodType type, Class<?> staticType) {
     return new ConstantCallSite(getMultiDispatchTarget(lookup, name, type, staticType));
   }
   
