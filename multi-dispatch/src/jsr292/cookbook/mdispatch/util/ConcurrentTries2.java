@@ -59,12 +59,12 @@ public class ConcurrentTries2 {
     return Integer.bitCount(bits & (bit - 1));
   }
   
-  private class Node {
-    final int hashCode;
+  private final class Node {
+    final int hashCode;                // key/value node
     private final Class<?> key;
     private final int value;
     
-    private final int bits;
+    private final int bits;            // array of nodes
     private final Node[] nodes;
     private final int shift;
     
@@ -89,18 +89,23 @@ public class ConcurrentTries2 {
     }
 
     int get(int hashCode, Class<?> key) {
-      if (nodes == null) {
-        if (key == this.key)
-          return value;
+      Node node = this;
+      for(;;) {
+        Node[] nodes = node.nodes;
+        if (nodes == null) {
+          if (key == node.key)
+            return node.value;
+          return 0;
+        }
+        int bit = bit(hashCode, node.shift);
+        int bits = node.bits;
+        int index = index(bits, bit);
+        if ((bits & bit) != 0) {
+          node = nodes[index];
+          continue;
+        }
         return 0;
       }
-      int bit = bit(hashCode, shift);
-      int bits = this.bits;
-      int index = index(bits, bit);
-      if ((bits & bit) != 0) {
-        return nodes[index].get(hashCode, key);
-      }
-      return 0;
     }
     
     Node add(int hashCode, int shift, Class<?> key, int newValue) {
@@ -134,15 +139,21 @@ public class ConcurrentTries2 {
     }
     
     int lookup(int hashCode, Class<?> key) {
-      if (nodes == null) {
-        if (key == this.key)
-          return value;
-      } else {
-        int bit = bit(hashCode, shift);
-        int bits = this.bits;
-        if ((bits & bit) != 0) {
-          return nodes[index(bits, bit)].lookup(hashCode, key);
+      Node node = this;
+      for(;;) {
+        Node[] nodes = node.nodes;
+        if (nodes == null) {
+          if (key == node.key)
+            return node.value;
+          break;
         }
+        int bit = bit(hashCode, node.shift);
+        int bits = node.bits;
+        if ((bits & bit) != 0) {
+          node = nodes[index(bits, bit)];
+          continue;
+        }
+        break;
       }
       return update(hashCode, key);
     }
