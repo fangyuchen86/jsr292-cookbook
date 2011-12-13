@@ -260,7 +260,7 @@ class SmallSelectorMetadata extends SelectorMetadata {
         set.addAll(boxUnboxSets[i]);
       }
       
-      positionInfos.add(new PositionInfo(i, mayBoxUnbox, new SmallClassBitMap(set.size())));
+      positionInfos.add(new PositionInfo(i, mayBoxUnbox, new SmallClassBitMap()));
     }
     
     // topologically sort method handles 
@@ -286,7 +286,7 @@ class SmallSelectorMetadata extends SelectorMetadata {
             bits |= 1 << j;
           }
         }
-        map.putNoResize(type, bits);
+        map.unsafeAdd(type, bits);
       }
     }
     
