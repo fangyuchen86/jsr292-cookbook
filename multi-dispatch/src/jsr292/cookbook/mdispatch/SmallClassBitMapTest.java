@@ -23,9 +23,9 @@ public class SmallClassBitMapTest {
       mhs.add(mh);
     }
     
-    SmallClassBitMap map = new SmallClassBitMap(mhs.size());
+    SmallClassBitMap map = new SmallClassBitMap();
     for(int i=0; i<mhs.size(); i++) {
-      map.putNoResize(mhs.get(i).type().parameterType(1), 1<<i);
+      map.unsafeAdd(mhs.get(i).type().parameterType(1), 1<<i);
     }
     
     System.out.println(map.lookup(Object.class));
