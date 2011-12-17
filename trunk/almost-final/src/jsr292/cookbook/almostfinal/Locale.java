@@ -22,7 +22,7 @@ public class Locale {
       };
   private static final MethodHandle DEFAULT_LOCALE_GETTER = DEFAULT_LOCALE.createGetter();
   
-  public static Locale getDefaultResource() {
+  public static Locale getDefault() {
     try {
       return (Locale)(Object)DEFAULT_LOCALE_GETTER.invokeExact();
     } catch (Throwable e) {
@@ -30,21 +30,21 @@ public class Locale {
     }
   }
   
-  public static void setDefaultResource(Locale resource) {
-    DEFAULT_LOCALE.setValue(resource);
+  public static void setDefault(Locale locale) {
+    DEFAULT_LOCALE.setValue(locale);
   }
   
   public static void main(String[] args) throws InterruptedException {
     new Thread(new Runnable() {
       @Override
       public void run() {
-        while(getDefaultResource().getName() == "default") {
+        while(getDefault().getName() == "default") {
           // do nothing
         }
-        System.out.println(getDefaultResource().getName());
+        System.out.println(getDefault().getName());
       }
     }).start();
     Thread.sleep(2000);
-    setDefaultResource(new Locale("foo"));
+    setDefault(new Locale("foo"));
   }
 }
