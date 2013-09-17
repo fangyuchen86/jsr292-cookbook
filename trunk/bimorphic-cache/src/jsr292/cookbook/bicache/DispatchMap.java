@@ -92,7 +92,7 @@ public abstract class DispatchMap {
           index = next(index, newLength);
         }
         newKs[index] = key;
-        newVs[index] = vs[index];
+        newVs[index] = vs[i];
       }
     }
     
